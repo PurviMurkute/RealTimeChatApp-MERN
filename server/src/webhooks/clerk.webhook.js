@@ -1,20 +1,27 @@
 import express from "express";
 import User from "../models/user.model.js";
 import { verifyWebhook } from "@clerk/backend/webhooks";
+import "dotenv/config";
 
 const router = express.Router();
 
+router.get("/", (req, res) => {
+  res.send("Webhook router working");
+});
+
 router.post("/", async (req, res) => {
-    console.log("✅ Clerk webhook received");
+  console.log("✅ Clerk webhook received");
   try {
-    const signingSecret = process.env.CLERK_WEBHOOK_SIGNING_SECRET;
+    const signingSecret = process.env.CLERK_WEBHOOK_SIGNIN_SECRET;
     if (!signingSecret) {
       res.status(503).json({ message: "Webhook secret is not provided" });
       return;
     }
 
     // clerk's verifier expects a Web Request with the raw body; express.raw gives a Buffer.
-    const payload = Buffer.isBuffer(req.body) ? req.body.toString("utf8") : String(req.body);
+    const payload = Buffer.isBuffer(req.body)
+      ? req.body.toString("utf8")
+      : String(req.body);
     const request = new Request("http://internal/webhooks/clerk", {
       method: "POST",
       headers: new Headers(req.headers),
@@ -28,11 +35,13 @@ router.post("/", async (req, res) => {
       const u = evt.data;
 
       const email =
-        u.email_addresses?.find((e) => e.id === u.primary_email_address_id)?.email_address ??
-        u.email_addresses?.[0]?.email_address;
+        u.email_addresses?.find((e) => e.id === u.primary_email_address_id)
+          ?.email_address ?? u.email_addresses?.[0]?.email_address;
 
       const fullName =
-        [u.first_name, u.last_name].filter(Boolean).join(" ") || u.username || email?.split("@")[0];
+        [u.first_name, u.last_name].filter(Boolean).join(" ") ||
+        u.username ||
+        email?.split("@")[0];
 
       await User.findOneAndUpdate(
         { clerkId: u.id },
