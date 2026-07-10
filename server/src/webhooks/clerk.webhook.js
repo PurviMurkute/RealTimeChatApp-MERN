@@ -5,12 +5,7 @@ import "dotenv/config";
 
 const router = express.Router();
 
-router.get("/", (req, res) => {
-  res.send("Webhook router working");
-});
-
 router.post("/", async (req, res) => {
-  console.log("✅ Clerk webhook received");
   try {
     const signingSecret = process.env.CLERK_WEBHOOK_SIGNIN_SECRET;
     if (!signingSecret) {
@@ -34,18 +29,20 @@ router.post("/", async (req, res) => {
     if (evt.type === "user.created" || evt.type === "user.updated") {
       const u = evt.data;
 
+      console.log("user details", u);
+
       const email =
         u.email_addresses?.find((e) => e.id === u.primary_email_address_id)
           ?.email_address ?? u.email_addresses?.[0]?.email_address;
 
-      const fullName =
+      const username =
         [u.first_name, u.last_name].filter(Boolean).join(" ") ||
         u.username ||
         email?.split("@")[0];
 
       await User.findOneAndUpdate(
         { clerkId: u.id },
-        { clerkId: u.id, email, fullName, profilePic: u.image_url },
+        { clerkId: u.id, email, username, profilePic: u.image_url },
         { new: true, upsert: true, setDefaultsOnInsert: true },
       );
     }
